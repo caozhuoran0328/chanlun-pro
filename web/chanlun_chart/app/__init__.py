@@ -491,9 +491,6 @@ def create_app(test_config=None):
 
         ex = get_exchange(Market(market))
 
-        # 判断当前是否可交易时间
-        if firstDataRequest == "false" and ex.now_trading() is False:
-            return {"s": "no_data", "nextTime": int(now_time + (10 * 60))}
 
         frequency = resolution_maps[resolution]
         cl_config = query_cl_chart_config(market, code)
@@ -546,6 +543,9 @@ def create_app(test_config=None):
             "zsd_zss": cl_chart_data["zsd_zss"],
             "bcs": cl_chart_data["bcs"],
             "mmds": cl_chart_data["mmds"],
+
+            "duokong": cl_chart_data["duokong"],
+            "duokong_xd": cl_chart_data["duokong_xd"],
         }
         return info
 
@@ -835,6 +835,9 @@ def create_app(test_config=None):
             "chart_show_xd_bc",
             "chart_show_zsd_bc",
             "chart_show_qsd_bc",
+            "chart_show_duokong_suidao",
+            "chart_show_duokong_suidao_xd",
+
         ]
         cl_config = {}
         for _k in keys:
@@ -1271,5 +1274,27 @@ def create_app(test_config=None):
             "count": len(ai_analyse_records),
             "data": ai_analyse_records,
         }
+
+    @app.route("/fundamental/<code>")
+    @login_required
+    def fundamental(code):
+        """
+        获取股票基本面分析 MD 文件内容
+        """
+        data_dir = (
+            pathlib.Path(__file__).parent.parent.parent.parent / "股票基本面分析"
+        )
+        if not data_dir.exists():
+            return {"found": False, "content": ""}
+
+        clean_code = code.split(".")[-1] if "." in code else code
+
+        # 模糊匹配：文件名包含股票代码即命中
+        for f in data_dir.glob("*.md"):
+            if clean_code in f.stem:
+                content = f.read_text(encoding="utf-8")
+                return {"found": True, "content": content}
+
+        return {"found": False, "content": ""}
 
     return app

@@ -476,6 +476,23 @@
 
             <div class="col-xs-3">
                 <label>
+                    <input name="form-field-checkbox" type="checkbox" value="1" class="ace" {% if chart_show_duokong_suidao=='1' %}
+                        checked {% endif %} id="chart_show_duokong_suidao">
+                    <span class="lbl">多空隧道(笔)</span>
+                </label>
+            </div>
+
+            <div class="col-xs-3">
+                <label>
+                    <input name="form-field-checkbox" type="checkbox" value="1" class="ace" {% if chart_show_duokong_suidao_xd=='1' %}
+                        checked {% endif %} id="chart_show_duokong_suidao_xd">
+                    <span class="lbl">多空隧道(段)</span>
+                </label>
+            </div>
+
+
+            <div class="col-xs-3">
+                <label>
                     <input name="form-field-checkbox" type="checkbox" value="1" class="ace" {% if chart_show_ma=='1' %}
                         checked {% endif %} id="chart_show_ma">
 

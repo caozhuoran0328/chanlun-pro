@@ -626,7 +626,9 @@ def render_charts(
                 line_xu_bis["val"],
                 label_opts=opts.LabelOpts(is_show=False),
                 linestyle_opts=opts.LineStyleOpts(
-                    width=1, type_="dashed", color=color_bi
+                    #width=1, type_="dashed", color=color_bi
+                    #屏蔽未完成笔的显示
+                    width=1, color=color_bi
                 ),
             )
         )
@@ -700,7 +702,9 @@ def render_charts(
                 line_xu_xds["val"],
                 label_opts=opts.LabelOpts(is_show=False),
                 linestyle_opts=opts.LineStyleOpts(
-                    width=2, type_="dashed", color=color_xd
+                    # width=2, type_="dashed", color=color_xd
+                    # 屏蔽未完成线段显示
+                    width=2, color=color_xd
                 ),
             )
         )

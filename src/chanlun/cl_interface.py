@@ -534,21 +534,30 @@ class BI(LINE):
         self.is_split = ""
 
         # 设置high,low，_type
+        # 当至少一个分型是 VERIFY 时，笔类型为 VERIFY；否则为普通类型
         if start.type == FxStatus.TOP:
-            if end.type == FxStatus.BOTTOM or end.type == FxStatus.VERIFY_BOTTOM:
+            if end.type == FxStatus.BOTTOM:
                 self.type = BiType.DOWN
                 self.high = start.val
                 self.low = end.val
+            elif end.type == FxStatus.VERIFY_BOTTOM:
+                self.type = BiType.VERIFY_DOWN
+                self.high = start.val
+                self.low = end.val
             else:
-                if end.high > start.high:
+                if end.val > start.val:
                     pass
         elif start.type == FxStatus.BOTTOM:
-            if end.type == FxStatus.TOP or end.type == FxStatus.VERIFY_TOP:
+            if end.type == FxStatus.TOP:
                 self.type = BiType.UP
                 self.high = end.val
                 self.low = start.val
+            elif end.type == FxStatus.VERIFY_TOP:
+                self.type = BiType.VERIFY_UP
+                self.high = end.val
+                self.low = start.val
             else:
-                if end.low < start.low:
+                if end.val < start.val:
                     pass
         elif start.type == FxStatus.VERIFY_TOP:
             if end.type == FxStatus.VERIFY_BOTTOM:
@@ -556,11 +565,11 @@ class BI(LINE):
                 self.high = start.val
                 self.low = end.val
             elif end.type == FxStatus.BOTTOM:
-                self.type = BiType.DOWN
+                self.type = BiType.VERIFY_DOWN
                 self.high = start.val
                 self.low = end.val
             else:
-                if end.high > start.high:
+                if end.val > start.val:
                     pass
         elif start.type == FxStatus.VERIFY_BOTTOM:
             if end.type == FxStatus.VERIFY_TOP:
@@ -568,13 +577,16 @@ class BI(LINE):
                 self.high = end.val
                 self.low = start.val
             elif end.type == FxStatus.TOP:
-                self.type = BiType.UP
+                self.type = BiType.VERIFY_UP
                 self.high = end.val
                 self.low = start.val
             else:
-                if end.low < start.low:
+                if end.val < start.val:
                     pass
-
+        self.start_datetime = self.start.k.date
+        self.start_index = self.start.index
+        self.end_datetime = self.end.k.date
+        self.end_index = self.end.index
 
     @property
     def td(self):
@@ -585,7 +597,12 @@ class BI(LINE):
         return False
 
     def __str__(self):
-        return f"index: {self.index} type: {self.type.value} FX: ({self.start.k.date} - {self.end.k.date}) high: {self.high} low: {self.low} done: {self.is_done()}"
+        # 下降笔：start=顶(high), end=底(low)
+        # 上升笔：start=底(low), end=顶(high)
+        is_down = '下降' in self.type.value
+        start_price = self.high if is_down else self.low
+        end_price = self.low if is_down else self.high
+        return f"{self.index + 1}. {self.type.value}：{self.start.k.date.strftime('%Y%m%d')}，{start_price}，{self.end.k.date.strftime('%Y%m%d')}，{end_price}"
 
     def is_done(self) -> bool:
         """
@@ -864,6 +881,11 @@ class XD(LINE):
         elif _type == XianDuanType.DOWN or _type == XianDuanType.VERIFY_DOWN:
             self.high = start.val
             self.low = end.val
+
+        self.start_datetime = self.start.k.date
+        self.start_index = self.start.index
+        self.end_datetime = self.end.k.date
+        self.end_index = self.end.index
 
 
     def is_qk(self) -> bool:

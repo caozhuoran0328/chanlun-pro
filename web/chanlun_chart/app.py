@@ -29,6 +29,7 @@ except Exception:
     pass
 
 import pathlib
+import subprocess
 import traceback
 import webbrowser
 from concurrent.futures import ThreadPoolExecutor
@@ -64,7 +65,19 @@ if __name__ == "__main__":
         if len(sys.argv) >= 2 and sys.argv[1] == "nobrowser":
             pass
         else:
-            webbrowser.open("http://127.0.0.1:9900")
+            # macOS 上 webbrowser.open 可能因 AppleScript 错误 (-10673) 而静默失败
+            # 直接用系统 open 命令打开浏览器，不依赖 webbrowser 模块
+            import platform
+            url = "http://0.0.0.0:9900"
+            try:
+                if platform.system() == "Darwin":
+                    subprocess.run(["open", url])
+                elif platform.system() == "Windows":
+                    subprocess.run(["cmd", "/c", "start", url])
+                else:
+                    subprocess.run(["xdg-open", url])
+            except Exception:
+                print("自动打开浏览器失败，请手动访问 http://127.0.0.1:9900")
         IOLoop.instance().start()
 
     except Exception as e:

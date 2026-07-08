@@ -520,7 +520,11 @@
             symbolInterval["interval"].toString().toLowerCase()
           );
           // console.log(symbolInterval);
-          // console.log(bars_result);
+          console.log("bars_result:", bars_result);
+          if (bars_result === undefined) {
+            console.warn("bars_result is undefined for interval:", symbolInterval["interval"]);
+            return true;
+          }
 
           // 画缠论图表
           let visible_range = chart.getVisibleRange();

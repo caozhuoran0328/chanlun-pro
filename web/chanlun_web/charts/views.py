@@ -213,6 +213,7 @@ def cl_chart_config_save(request):
             'chart_show_bi_zs', 'chart_show_xd_zs', 'chart_show_zsd_zs', 'chart_show_qsd_zs',
             'chart_show_bi_mmd', 'chart_show_xd_mmd', 'chart_show_zsd_mmd', 'chart_show_qsd_mmd',
             'chart_show_bi_bc', 'chart_show_xd_bc', 'chart_show_zsd_bc', 'chart_show_qsd_bc',
+            'chart_show_duokong_suidao', 'chart_show_duokong_suidao_xd',
             'chart_show_ma', 'chart_show_boll',
             'chart_show_futu', 'chart_kline_nums', 'chart_show_ld',
             'chart_idx_ma_period', 'chart_idx_vol_ma_period', 'chart_idx_boll_period', 'chart_idx_rsi_period',

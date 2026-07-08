@@ -39,6 +39,9 @@ interface HistoryFullDataResponse extends UdfOkResponse {
     zsd_zss: any;
     bcs: any;
     mmds: any;
+    vegas: any;
+    duokong: any;
+    duokong_xd: any;
 }
 
 // tslint:enable: no-any
@@ -63,6 +66,9 @@ export interface GetBarsResult {
     zsd_zss: any;
     bcs: any;
     mmds: any;
+    vegas: any;
+    duokong: any;
+    duokong_xd: any;
 }
 
 export interface LimitedResponseConfiguration {
@@ -234,6 +240,9 @@ export class HistoryProvider {
         let zsd_zss: any = [];
         let bcs: any = [];
         let mmds: any = [];
+        let vegas: any = {};
+        let duokong: any = {};
+        let duokong_xd: any = {};
 
         let result = {
             bars: bars,
@@ -247,6 +256,9 @@ export class HistoryProvider {
             zsd_zss: zsd_zss,
             bcs: bcs,
             mmds: mmds,
+            vegas: vegas,
+            duokong: duokong,
+            duokong_xd: duokong_xd,
         }
 
         if (response.s === 'no_data') {
@@ -265,6 +277,9 @@ export class HistoryProvider {
             zsd_zss = response.zsd_zss;
             bcs = response.bcs;
             mmds = response.mmds;
+            vegas = response.vegas || {};
+            duokong = response.duokong || {};
+            duokong_xd = response.duokong_xd || {};
 
             for (let i = 0; i < response.t.length; ++i) {
                 const barValue: Bar = {
@@ -287,7 +302,7 @@ export class HistoryProvider {
 
                 bars.push(barValue);
             }
-            let result = {
+            result = {
                 bars: bars,
                 meta: meta,
                 fxs: fxs,
@@ -299,6 +314,9 @@ export class HistoryProvider {
                 zsd_zss: zsd_zss,
                 bcs: bcs,
                 mmds: mmds,
+            vegas: vegas,
+            duokong: duokong,
+            duokong_xd: duokong_xd,
             }
             let obj_res = this.bars_result.get(requestParams['symbol'].toString().toLowerCase())
             if (obj_res == undefined) {

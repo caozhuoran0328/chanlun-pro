@@ -13,7 +13,7 @@
   <script type="text/javascript" src="{{ url_for('static', filename='xm-select.js') }}"></script>
   <script type="text/javascript"
     src="{{ url_for('static', filename='charting_library/charting_library.standalone.js') }}"></script>
-  <script type="text/javascript" src="{{ url_for('static', filename='datafeeds/udf/dist/bundle.js') }}"></script>
+  <script type="text/javascript" src="{{ url_for('static', filename='datafeeds/udf/dist/bundle.js') }}?v=6"></script>
   {% include 'dark.html' %}
 </head>
 
@@ -140,6 +140,15 @@
               </form>
               <table class="layui-hide" id="table_ai_analysis" lay-filter="table_ai_analysis"></table>
 
+              <hr class="layui-border-red" />
+            </div>
+          </div>
+          <div class="layui-colla-item">
+            <div class="layui-colla-title" data-ca-title="基本面分析">基本面分析</div>
+            <div class="layui-colla-content" style="padding: 0">
+              <div id="fundamental_content" style="padding: 10px; font-size: 13px; line-height: 1.8; max-height: 600px; overflow: auto; word-break: break-all;">
+                <span style="color: #999;">选择股票后自动加载...</span>
+              </div>
               <hr class="layui-border-red" />
             </div>
           </div>
@@ -678,6 +687,7 @@
           console.log(id + " 标的变化：" + symbol["ticker"]);
           clear_draw_chanlun();
           render_zixuan_opts();
+          load_fundamental();
           setTimeout(draw_chanlun, 1500);
         });
         chart.onIntervalChanged().subscribe(null, function (interval) {
@@ -740,7 +750,11 @@
             symbolInterval["interval"].toString().toLowerCase()
           );
           // console.log(symbolInterval);
-          // console.log(bars_result);
+          console.log("bars_result:", bars_result);
+          if (bars_result === undefined) {
+            console.warn("bars_result is undefined for interval:", symbolInterval["interval"]);
+            return true;
+          }
 
           // 画缠论图表
           let visible_range = chart.getVisibleRange();
@@ -765,6 +779,8 @@
             "xd_zss",
             "bcs",
             "mmds",
+            "duokong",
+            "duokong_xd",
           ]) {
             if (obj_charts[symbol_key][c_key] != undefined) {
               obj_charts[symbol_key][c_key].sort(function (a, b) {
@@ -852,7 +868,7 @@
                   overrides: {
                     linestyle: parseInt(bi["linestyle"]),
                     linewidth: 1,
-                    linecolor: "#708090",
+                    linecolor: "#1E90FF",
                   },
                 }),
               });
@@ -878,7 +894,7 @@
                   overrides: {
                     linestyle: parseInt(xd["linestyle"]),
                     linewidth: 2,
-                    linecolor: "#00BFFF",
+                    linecolor: "#FF0000",
                   },
                 }),
               });
@@ -1088,6 +1104,166 @@
               }
             }
           });
+          // 画BI级别多空隧道线（line格式：start_date/stop_date/price），细线
+          if (bars_result.duokong && bars_result.duokong.dksd_high) {
+            var biLineConfigs = [
+              { seq: bars_result.duokong.dksd_high, color: '#00BCD4', label: 'bi_high', width: 1 },
+              { seq: bars_result.duokong.dksd_low, color: '#FF4081', label: 'bi_low', width: 1 },
+            ];
+            biLineConfigs.forEach(function (tc) {
+              tc.seq.forEach(function (line) {
+                if (line && line.points && line.points.length === 2) {
+                  var p0 = line.points[0];
+                  var p1 = line.points[1];
+                  // 只绘制在可见范围内的线段
+                  if (p0.time >= from || p1.time >= from) {
+                    var key = JSON.stringify({ l: tc.label, p0: p0, p1: p1 });
+                    if (key_all.indexOf(key) === -1) {
+                      obj_charts[symbol_key]['duokong'].push({
+                        time: p0.time,
+                        key: key,
+                        id: chart.createMultipointShape([
+                          { time: p0.time, price: p0.price },
+                          { time: p1.time, price: p1.price },
+                        ], {
+                          shape: 'trend_line',
+                          lock: true,
+                          disableSelection: true,
+                          disableSave: true,
+                          disableUndo: true,
+                          showInObjectsTree: false,
+                          overrides: {
+                            linestyle: parseInt(line.linestyle || '0'),
+                            linewidth: tc.width,
+                            linecolor: tc.color,
+                          },
+                        }),
+                      });
+                    }
+                  }
+                }
+              });
+            });
+            // 画垂直连接线
+            var biVLineConfigs = [
+              { seq: bars_result.duokong.dksd_high_v, color: '#00BCD4', label: 'bi_high_v', width: 1 },
+              { seq: bars_result.duokong.dksd_low_v, color: '#FF4081', label: 'bi_low_v', width: 1 },
+            ];
+            biVLineConfigs.forEach(function (tc) {
+              if (!tc.seq) return;
+              tc.seq.forEach(function (line) {
+                if (line && line.points && line.points.length === 2) {
+                  var p0 = line.points[0];
+                  var p1 = line.points[1];
+                  if (p0.time >= from || p1.time >= from) {
+                    var key = JSON.stringify({ l: tc.label, p0: p0, p1: p1 });
+                    if (key_all.indexOf(key) === -1) {
+                      obj_charts[symbol_key]['duokong'].push({
+                        time: p0.time,
+                        key: key,
+                        id: chart.createMultipointShape([
+                          { time: p0.time, price: p0.price },
+                          { time: p1.time, price: p1.price },
+                        ], {
+                          shape: 'trend_line',
+                          lock: true,
+                          disableSelection: true,
+                          disableSave: true,
+                          disableUndo: true,
+                          showInObjectsTree: false,
+                          overrides: {
+                            linestyle: parseInt(line.linestyle || '0'),
+                            linewidth: tc.width,
+                            linecolor: tc.color,
+                          },
+                        }),
+                      });
+                    }
+                  }
+                }
+              });
+            });
+          }
+          // 画XD级别多空隧道线（line格式：start_date/stop_date/price），粗线
+          if (bars_result.duokong_xd && bars_result.duokong_xd.dksd_high) {
+            var xdLineConfigs = [
+              { seq: bars_result.duokong_xd.dksd_high, color: '#FF6D00', label: 'xd_high', width: 3 },
+              { seq: bars_result.duokong_xd.dksd_low, color: '#FFB300', label: 'xd_low', width: 3 },
+            ];
+            xdLineConfigs.forEach(function (tc) {
+              tc.seq.forEach(function (line) {
+                if (line && line.points && line.points.length === 2) {
+                  var p0 = line.points[0];
+                  var p1 = line.points[1];
+                  // 只绘制在可见范围内的线段
+                  if (p0.time >= from || p1.time >= from) {
+                    var key = JSON.stringify({ l: tc.label, p0: p0, p1: p1 });
+                    if (key_all.indexOf(key) === -1) {
+                      obj_charts[symbol_key]['duokong_xd'].push({
+                        time: p0.time,
+                        key: key,
+                        id: chart.createMultipointShape([
+                          { time: p0.time, price: p0.price },
+                          { time: p1.time, price: p1.price },
+                        ], {
+                          shape: 'trend_line',
+                          lock: true,
+                          disableSelection: true,
+                          disableSave: true,
+                          disableUndo: true,
+                          showInObjectsTree: false,
+                          overrides: {
+                            linestyle: parseInt(line.linestyle || '0'),
+                            linewidth: tc.width,
+                            linecolor: tc.color,
+                          },
+                        }),
+                      });
+                    }
+                  }
+                }
+              });
+            });
+            // 画垂直连接线：将相邻的水平线连接成连贯的阶梯线型
+            var vLineConfigs = [
+              { seq: bars_result.duokong_xd.dksd_high_v, color: '#FF6D00', label: 'xd_high_v', width: 3 },
+              { seq: bars_result.duokong_xd.dksd_low_v, color: '#FFB300', label: 'xd_low_v', width: 3 },
+            ];
+            vLineConfigs.forEach(function (tc) {
+              if (!tc.seq) return;
+              tc.seq.forEach(function (line) {
+                if (line && line.points && line.points.length === 2) {
+                  var p0 = line.points[0];
+                  var p1 = line.points[1];
+                  if (p0.time >= from || p1.time >= from) {
+                    var key = JSON.stringify({ l: tc.label, p0: p0, p1: p1 });
+                    if (key_all.indexOf(key) === -1) {
+                      obj_charts[symbol_key]['duokong_xd'].push({
+                        time: p0.time,
+                        key: key,
+                        id: chart.createMultipointShape([
+                          { time: p0.time, price: p0.price },
+                          { time: p1.time, price: p1.price },
+                        ], {
+                          shape: 'trend_line',
+                          lock: true,
+                          disableSelection: true,
+                          disableSave: true,
+                          disableUndo: true,
+                          showInObjectsTree: false,
+                          overrides: {
+                            linestyle: parseInt(line.linestyle || '0'),
+                            linewidth: tc.width,
+                            linecolor: tc.color,
+                          },
+                        }),
+                      });
+                    }
+                  }
+                }
+              });
+            });
+          }
           const code_end = performance.now();
           console.log(`${symbol_key} 运行时间:${code_end - code_start} 毫秒`);
         }
@@ -1140,6 +1316,81 @@
         w.activeChart().setSymbol(market + ":" + code);
       });
       render_zixuan_opts();
+      load_fundamental();
+    }
+
+    // 加载基本面分析
+    function load_fundamental() {
+      $('#fundamental_content').html('<span style="color: #999;">加载中...</span>');
+      $.ajax({
+        type: "GET",
+        url: "/fundamental/" + code.replace("/", "__"),
+        dataType: "json",
+        success: function (res) {
+          if (res["found"]) {
+            var html = simpleMarkdownToHtml(res["content"]);
+            $('#fundamental_content').html(html);
+          } else {
+            $('#fundamental_content').html('<span style="color: #999;">暂无该股票的基本面分析数据</span>');
+          }
+        },
+        error: function () {
+          $('#fundamental_content').html('<span style="color: #999;">加载失败</span>');
+        }
+      });
+    }
+
+    // 简单 Markdown 转 HTML
+    function simpleMarkdownToHtml(md) {
+      var lines = md.split('\n');
+      var html = '';
+      var inList = false;
+      var inOrderedList = false;
+      for (var i = 0; i < lines.length; i++) {
+        var line = lines[i];
+        // 标题
+        if (/^### /.test(line)) {
+          html += '<h4 style="margin:8px 0 4px;color:#ff5722;">' + line.replace(/^### /, '') + '</h4>';
+          continue;
+        }
+        if (/^## /.test(line)) {
+          html += '<h3 style="margin:10px 0 6px;color:#ff5722;">' + line.replace(/^## /, '') + '</h3>';
+          continue;
+        }
+        if (/^# /.test(line)) {
+          html += '<h2 style="margin:12px 0 8px;color:#ff5722;">' + line.replace(/^# /, '') + '</h2>';
+          continue;
+        }
+        // 无序列表
+        if (/^- /.test(line)) {
+          if (!inList) { html += '<ul style="margin:2px 0;padding-left:18px;">'; inList = true; }
+          html += '<li>' + line.replace(/^- /, '') + '</li>';
+          continue;
+        } else if (inList) {
+          html += '</ul>';
+          inList = false;
+        }
+        // 有序列表
+        if (/^\d+\. /.test(line)) {
+          if (!inOrderedList) { html += '<ol style="margin:2px 0;padding-left:18px;">'; inOrderedList = true; }
+          html += '<li>' + line.replace(/^\d+\. /, '') + '</li>';
+          continue;
+        } else if (inOrderedList) {
+          html += '</ol>';
+          inOrderedList = false;
+        }
+        // 粗体
+        line = line.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+        // 空行
+        if (line.trim() === '') {
+          html += '<br/>';
+        } else {
+          html += '<p style="margin:2px 0;">' + line + '</p>';
+        }
+      }
+      if (inList) html += '</ul>';
+      if (inOrderedList) html += '</ol>';
+      return html;
     }
 
     // 更新展示的股票列表涨跌幅
@@ -1474,7 +1725,7 @@
             ],
           ],
         });
-        // 单击警报内容列表
+        // 单������警报内容列表
         table.on("row(table_ai_analysis)", function (obj) {
           let data = obj.data; // 获取当前行数据
           var title = "AI分析 " + data.stock_code + " " + data.stock_name + " " + data.frequency + data.dt + " 模型 " + data.model;
@@ -1696,7 +1947,7 @@
                   });
                   // 行双击事件( 双击事件为: rowDouble )
                   table.on("row(table_alerts)", function (obj) {
-                    let data = obj.data; // 获取当前行数据
+                    let data = obj.data; // 获取当前���数据
                     layer.open({
                       type: 2,
                       title: "修改警报提醒",
@@ -2070,6 +2321,7 @@
       }
 
       render_zixuan_opts();
+      load_fundamental();
     }
 
     init_web();

@@ -287,7 +287,7 @@ export class HistoryProvider {
 
                 bars.push(barValue);
             }
-            let result = {
+            result = {
                 bars: bars,
                 meta: meta,
                 fxs: fxs,

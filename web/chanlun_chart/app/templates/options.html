@@ -636,6 +636,14 @@
                     <input type="checkbox" value="1" lay-filter="cl_config" {% if chart_show_fx=='1' %} checked {% endif
                         %} name="chart_show_fx" title="分型" />
                 </div>
+
+                <div class="layui-col-xs3">
+                    <input type="checkbox" value="1" lay-filter="cl_config" {% if chart_show_duokong_suidao=='1' %} checked {% endif %} name="chart_show_duokong_suidao" title="多空隧道(笔)" />
+                </div>
+                <div class="layui-col-xs3">
+                    <input type="checkbox" value="1" lay-filter="cl_config" {% if chart_show_duokong_suidao_xd=='1' %} checked {% endif %} name="chart_show_duokong_suidao_xd" title="多空隧道(段)" />
+                </div>
+
             </div>
         </div>
 

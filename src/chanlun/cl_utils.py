@@ -5,10 +5,12 @@ import numpy as np
 import pandas as pd
 
 from chanlun import fun
-from chanlun.cl_interface import BI, FX, ICL, LINE, MACD_INFOS, ZS, Config, Kline
+from chanlun.cl_interface import BI, FX, ICL, LINE, MACD_INFOS, ZS, Config, Kline, BiType, XianDuanType
 from chanlun.db import db
 from chanlun.exchange import exchange
 from chanlun.file_db import FileCacheDB
+from chanlun.get_duokong_bi import Bi_DuoKong_Process
+from chanlun.get_duokong_xd import XianDuan_DuoKong_Process
 
 
 def web_batch_get_cl_datas(
@@ -304,7 +306,7 @@ def query_cl_chart_config(
         # 分型配置
         "fx_qy": Config.FX_QY_THREE.value,
         "fx_qj": Config.FX_QJ_K.value,
-        "fx_bh": Config.FX_BH_NO.value,
+        "fx_bh": Config.FX_BH_DINGDI.value,  # FX_BH_DINGDI: 顶不可以在底中 (minute data friendly default)
         # 笔配置
         "bi_type": Config.BI_TYPE_OLD.value,
         "bi_bzh": Config.BI_BZH_YES.value,
@@ -377,6 +379,8 @@ def query_cl_chart_config(
         "chart_show_qsd_bc": "1",
         "chart_show_ma": "0",
         "chart_show_boll": "0",
+        "chart_show_duokong_suidao": "1",
+        "chart_show_duokong_suidao_xd": "1",
         "chart_show_futu": "macd",
         "chart_show_atr_stop_loss": False,
         "chart_show_ld": "xd",
@@ -656,6 +660,7 @@ def cl_data_to_tv_chart(cd: ICL, config: dict, to_frequency: str = None):
     klines = pd.DataFrame(klines)
     """
     klines = cd.get_src_klines()
+    klines = klines.reset_index(drop=True)
     klines.loc[:, "code"] = cd.get_code()
     if to_frequency is not None:
         # 将数据转换成指定的周期数据
@@ -688,7 +693,7 @@ def cl_data_to_tv_chart(cd: ICL, config: dict, to_frequency: str = None):
                         {"time": fun.datetime_to_int(fx.k.date), "price": fx.val},
                         {"time": fun.datetime_to_int(fx.k.date), "price": fx.val},
                     ],
-                    "text": fx.type,
+                    "text": "ding" if "顶" in str(fx.type) else "di",
                 }
             )
 
@@ -707,7 +712,9 @@ def cl_data_to_tv_chart(cd: ICL, config: dict, to_frequency: str = None):
                             "price": bi.end.val,
                         },
                     ],
-                    "linestyle": "0" if bi.is_done() else "1",
+                    #"linestyle": "0" if bi.is_done() else "1",
+                    # 屏蔽未完成bi
+                    "linestyle": "0"
                 }
             )
 
@@ -726,7 +733,9 @@ def cl_data_to_tv_chart(cd: ICL, config: dict, to_frequency: str = None):
                             "price": xd.end.val,
                         },
                     ],
-                    "linestyle": "0" if xd.is_done() else "1",
+                    #"linestyle": "0" if xd.is_done() else "1",
+                    #屏蔽未完成线段
+                    "linestyle": "0",
                 }
             )
 
@@ -892,6 +901,101 @@ def cl_data_to_tv_chart(cd: ICL, config: dict, to_frequency: str = None):
                     "text": mmd_text,
                 }
             )
+    duokong_data = {}
+    if config.get("chart_show_duokong_suidao", "0") == "1":
+        bi_dk_proc = Bi_DuoKong_Process()
+        src_klines = cd.get_src_klines().reset_index(drop=True)
+        dksd_high, dksd_low = bi_dk_proc._compute_dk_sequences(cd.get_bis(), src_klines)
+        # 将 line 格式转换为前端可绘制的线段格式
+        def _line_to_chart(line):
+            sd = line.get("start_date")
+            ed = line.get("stop_date")
+            if sd is None or ed is None:
+                return None
+            return {
+                "points": [
+                    {"time": fun.datetime_to_int(sd), "price": line["price"]},
+                    {"time": fun.datetime_to_int(ed), "price": line["price"]},
+                ],
+                "linestyle": "0",
+            }
+        high_lines = [
+            item for item in (_line_to_chart(line) for line in dksd_high) if item is not None
+        ]
+        low_lines = [
+            item for item in (_line_to_chart(line) for line in dksd_low) if item is not None
+        ]
+        # 生成垂直连接线：将相邻的水平线连接成连贯的阶梯线型
+        def _build_vertical_connectors(lines):
+            connectors = []
+            for i in range(1, len(lines)):
+                prev = lines[i - 1]
+                curr = lines[i]
+                prev_end = prev["points"][1]
+                curr_start = curr["points"][0]
+                connectors.append({
+                    "points": [
+                        {"time": prev_end["time"], "price": prev_end["price"]},
+                        {"time": curr_start["time"], "price": curr_start["price"]},
+                    ],
+                    "linestyle": "0",
+                })
+            return connectors
+        duokong_data = {
+            "dksd_high": high_lines,
+            "dksd_low": low_lines,
+            "dksd_high_v": _build_vertical_connectors(high_lines),
+            "dksd_low_v": _build_vertical_connectors(low_lines),
+        }
+
+    duokong_xd_data = {}
+    if config.get("chart_show_duokong_suidao_xd", "0") == "1":
+        xd_dk_proc = XianDuan_DuoKong_Process()
+        src_klines = cd.get_src_klines().reset_index(drop=True)
+        dksd_high, dksd_low = xd_dk_proc._compute_dk_sequences(cd.get_xds(), src_klines)
+        # 将 line 格式转换为前端可绘制的线段格式
+        # line 格式: {'price': float, 'start_date': datetime, 'stop_date': datetime}
+        def _line_to_chart(line):
+            sd = line.get("start_date")
+            ed = line.get("stop_date")
+            if sd is None or ed is None:
+                return None
+            return {
+                "points": [
+                    {"time": fun.datetime_to_int(sd), "price": line["price"]},
+                    {"time": fun.datetime_to_int(ed), "price": line["price"]},
+                ],
+                "linestyle": "0",
+            }
+        high_lines = [
+            item for item in (_line_to_chart(line) for line in dksd_high) if item is not None
+        ]
+        low_lines = [
+            item for item in (_line_to_chart(line) for line in dksd_low) if item is not None
+        ]
+        # 生成垂直连接线：将相邻的水平线连接成连贯的阶梯线型
+        # 垂直线从前一条水平线的 end_date 连接到后一条水平线的 start_date
+        def _build_vertical_connectors(lines):
+            connectors = []
+            for i in range(1, len(lines)):
+                prev = lines[i - 1]
+                curr = lines[i]
+                prev_end = prev["points"][1]
+                curr_start = curr["points"][0]
+                connectors.append({
+                    "points": [
+                        {"time": prev_end["time"], "price": prev_end["price"]},
+                        {"time": curr_start["time"], "price": curr_start["price"]},
+                    ],
+                    "linestyle": "0",
+                })
+            return connectors
+        duokong_xd_data = {
+            "dksd_high": high_lines,
+            "dksd_low": low_lines,
+            "dksd_high_v": _build_vertical_connectors(high_lines),
+            "dksd_low_v": _build_vertical_connectors(low_lines),
+        }
 
     return {
         "t": kline_ts,
@@ -909,6 +1013,8 @@ def cl_data_to_tv_chart(cd: ICL, config: dict, to_frequency: str = None):
         "zsd_zss": zsd_zs_chart_data,
         "bcs": bc_chart_data,
         "mmds": mmd_chart_data,
+        "duokong": duokong_data,
+        "duokong_xd": duokong_xd_data,
     }
 
 

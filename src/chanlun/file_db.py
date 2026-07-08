@@ -4,7 +4,6 @@ import pathlib
 import pickle
 import random
 from decimal import Decimal
-import time
 from typing import Union
 
 import pandas as pd
@@ -60,6 +59,8 @@ class FileCacheDB(object):
             "bi_split_k_cross_nums",
             "fx_check_k_nums",
             "allow_bi_fx_strict",
+            "BI_MIN_KLINE_COUNT",
+            "BI_MIN_AMPLITUDE",
             "xd_qj",
             "zsd_qj",
             "xd_allow_bi_pohuai",
@@ -142,6 +143,71 @@ class FileCacheDB(object):
                 pass
         return True
 
+    def _is_cached_cl_valid(self, cd: ICL) -> bool:
+        """
+        验证从 pickle 加载的 CL 对象是否与当前 CL 版本兼容。
+
+        检查项：
+            1. 对象是 ICL 的实例
+            2. pickle 版本号与当前 CL.PICKLE_VERSION 一致
+            3. 必需属性存在
+        """
+        if not isinstance(cd, ICL):
+            return False
+        stored_version = getattr(cd, '_pickle_version', 0)
+        curr_version = getattr(cl.CL, 'PICKLE_VERSION', 1)
+        if stored_version != curr_version:
+            return False
+        required_attrs = ('config', 'code', 'frequency', 'src_klines', 'get_bis', 'get_xds')
+        for attr in required_attrs:
+            if not hasattr(cd, attr):
+                return False
+        return True
+
+    def _load_cached_cl(
+        self,
+        file_pathname: pathlib.Path,
+        market: str,
+        code: str,
+        frequency: str,
+        cl_config: dict,
+    ) -> ICL:
+        """
+        从 pickle 文件加载 CL 对象，带兼容性检查。
+
+        如果 pickle 文件存在且与当前 CL 版本兼容，返回缓存对象。
+        如果文件不存在或版本不兼容，返回新创建的 CL 对象并清理不兼容的缓存文件。
+        """
+        if not file_pathname.is_file():
+            return cl.CL(code, frequency, cl_config)
+
+        # 一次性尝试加载 pickle，不重试（结构不兼容不会自动修复）
+        try:
+            with open(file_pathname, "rb") as fp:
+                cd = pickle.load(fp)
+        except Exception as e:
+            print(
+                f"pickle 加载失败 {market} {code} {frequency} - {e}，删除缓存重新计算"
+            )
+            try:
+                file_pathname.unlink()
+            except Exception:
+                pass
+            return cl.CL(code, frequency, cl_config)
+
+        # 验证加载对象的兼容性
+        if not self._is_cached_cl_valid(cd):
+            print(
+                f"{market}-{code}-{frequency} 缓存对象版本不兼容，删除并重新计算"
+            )
+            try:
+                file_pathname.unlink()
+            except Exception:
+                pass
+            return cl.CL(code, frequency, cl_config)
+
+        return cd
+
     def get_web_cl_data(
         self,
         market: str,
@@ -162,28 +228,33 @@ class FileCacheDB(object):
             self.cl_data_path
             / f"{market}_{code.replace('/', '_').replace('.', '_')}_{frequency}_{key}.pkl"
         )
-        cd: ICL = cl.CL(code, frequency, cl_config)
-        try:
-            if file_pathname.is_file():
-                # print(f'{market}-{code}-{frequency} {key} K-Nums {len(klines)} 使用缓存')
-                try_num = 0
-                while True:
-                    try:
-                        with open(file_pathname, "rb") as fp:
-                            cd = pickle.load(fp)
-                        break
-                    except Exception as e:
-                        try_num += 1
-                        time.sleep(0.5)
-                        if try_num > 5:
-                            raise e
+
+        # 尝试加载缓存（带版本兼容性检查）
+        cd: ICL = self._load_cached_cl(file_pathname, market, code, frequency, cl_config)
+
+        # 数据完整性检查（仅对从缓存加载的有效对象执行）
+        if file_pathname.is_file():
+            try:
+                src_klines = cd.get_src_klines()
+                _is_df = isinstance(src_klines, pd.DataFrame)
+
                 # 判断缓存中的最后k线是否大于给定的最新一根k线时间，如果小于说明直接有断档，不连续，重新全量重新计算
                 if (
-                    len(cd.get_src_klines()) > 0
+                    len(src_klines) > 0
                     and len(klines) > 0
                     and (
-                        cd.get_src_klines()[-1].date < klines.iloc[0]["date"]
-                        or cd.get_src_klines()[0].date > klines.iloc[0]["date"]
+                        (
+                            src_klines.iloc[-1]["date"]
+                            if _is_df
+                            else src_klines[-1].date
+                        )
+                        < klines.iloc[0]["date"]
+                        or (
+                            src_klines.iloc[0]["date"]
+                            if _is_df
+                            else src_klines[0].date
+                        )
+                        > klines.iloc[0]["date"]
                     )
                 ):
                     print(
@@ -191,53 +262,75 @@ class FileCacheDB(object):
                     )
                     cd = cl.CL(code, frequency, cl_config)
                 # 判断缓存中的数据，与给定的K线数据是否有差异，有则表示数据有变（比如复权会产生变化），则重新全量计算
-                if len(cd.get_src_klines()) >= 2 and len(klines) >= 2:
-                    cd_pre_kline = cd.get_src_klines()[-2]
-                    src_klines = klines[klines["date"] == cd_pre_kline.date]
+                if len(src_klines) >= 2 and len(klines) >= 2:
+                    cd_pre_kline = src_klines.iloc[-2] if _is_df else src_klines[-2]
+                    if _is_df:
+                        cd_pre_date = cd_pre_kline["date"]
+                        cd_pre_c = cd_pre_kline["c"]
+                        cd_pre_h = cd_pre_kline["h"]
+                        cd_pre_l = cd_pre_kline["l"]
+                        cd_pre_o = cd_pre_kline["o"]
+                        cd_pre_a = cd_pre_kline["a"]
+                    else:
+                        cd_pre_date = cd_pre_kline.date
+                        cd_pre_c = cd_pre_kline.c
+                        cd_pre_h = cd_pre_kline.h
+                        cd_pre_l = cd_pre_kline.l
+                        cd_pre_o = cd_pre_kline.o
+                        cd_pre_a = cd_pre_kline.a
+                    src_kline_match = klines[klines["date"] == cd_pre_date]
                     # 计算后的数据没有最开始的日期或者 开高低收其中有不同的，则重新计算
                     if (
-                        len(src_klines) == 0
-                        or Decimal(src_klines.iloc[0]["close"])
-                        != Decimal(cd_pre_kline.c)
-                        or Decimal(src_klines.iloc[0]["high"])
-                        != Decimal(cd_pre_kline.h)
-                        or Decimal(src_klines.iloc[0]["low"]) != Decimal(cd_pre_kline.l)
-                        or Decimal(src_klines.iloc[0]["open"])
-                        != Decimal(cd_pre_kline.o)
-                        or Decimal(src_klines.iloc[0]["volume"])
-                        != Decimal(cd_pre_kline.a)
+                        len(src_kline_match) == 0
+                        or Decimal(src_kline_match.iloc[0]["close"])
+                        != Decimal(cd_pre_c)
+                        or Decimal(src_kline_match.iloc[0]["high"])
+                        != Decimal(cd_pre_h)
+                        or Decimal(src_kline_match.iloc[0]["low"])
+                        != Decimal(cd_pre_l)
+                        or Decimal(src_kline_match.iloc[0]["open"])
+                        != Decimal(cd_pre_o)
+                        or Decimal(src_kline_match.iloc[0]["volume"])
+                        != Decimal(cd_pre_a)
                     ):
                         print(
                             f"{market}--{code}--{frequency} {key}",
                             cd_pre_kline,
-                            src_klines.iloc[0].to_dict(),
+                            src_kline_match.iloc[0].to_dict(),
                         )
                         print(
                             f"{market}--{code}--{frequency} {key} 计算前的数据有差异，重新计算"
                         )
-                        # print(cd_pre_kline, src_klines)
                         cd = cl.CL(code, frequency, cl_config)
                 # 判断缓存中的最近一百根时间范围内的数量是否一致
-                if len(cd.get_src_klines()) >= 100 and len(klines) >= 100:
-                    _valid_cd_klines = cd.get_src_klines()[-100:]
+                if len(src_klines) >= 100 and len(klines) >= 100:
+                    _valid_cd_klines = (
+                        src_klines.iloc[-100:] if _is_df else src_klines[-100:]
+                    )
+                    if _is_df:
+                        cd_start_date = _valid_cd_klines.iloc[0]["date"]
+                        cd_end_date = _valid_cd_klines.iloc[-1]["date"]
+                    else:
+                        cd_start_date = _valid_cd_klines[0].date
+                        cd_end_date = _valid_cd_klines[-1].date
                     _valid_src_klines = klines[
-                        (klines["date"] >= _valid_cd_klines[0].date)
-                        & (klines["date"] <= _valid_cd_klines[-1].date)
+                        (klines["date"] >= cd_start_date)
+                        & (klines["date"] <= cd_end_date)
                     ]
                     if len(_valid_cd_klines) != len(_valid_src_klines):
                         print(
                             f"{market}--{code}--{frequency} {key} 计算后的缠论数据有丢失数据 [{len(_valid_cd_klines)} - {len(_valid_src_klines)}]，重新计算"
                         )
                         cd = cl.CL(code, frequency, cl_config)
-        except Exception as e:
-            if file_pathname.is_file():
+            except Exception as e:
                 print(
-                    f"获取 web 缓存的缠论数据对象异常 {market} {code} {frequency} - {e}，尝试删除缓存文件重新计算"
+                    f"数据完整性校验异常 {market} {code} {frequency} - {e}，删除缓存重新计算"
                 )
                 try:
                     file_pathname.unlink()
                 except Exception:
                     pass
+                cd = cl.CL(code, frequency, cl_config)
 
         cd.process_klines(klines)
 

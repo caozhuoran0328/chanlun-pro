@@ -120,9 +120,7 @@
                 throw new Error(response.errmsg);
             }
             const bars = [];
-            const meta = {
-                noData: false,
-            };
+            const meta = { noData: false };
             let fxs = [];
             let bis = [];
             let xds = [];
@@ -132,35 +130,21 @@
             let zsd_zss = [];
             let bcs = [];
             let mmds = [];
-            let result = {
-                bars: bars,
-                meta: meta,
-                fxs: fxs,
-                bis: bis,
-                xds: xds,
-                zsds: zsds,
-                bi_zss: bi_zss,
-                xd_zss: xd_zss,
-                zsd_zss: zsd_zss,
-                bcs: bcs,
-                mmds: mmds,
-            };
             if (response.s === 'no_data') {
                 meta.noData = true;
                 meta.nextTime = response.nextTime;
-            }
-            else {
+            } else {
                 const volumePresent = response.v !== undefined;
                 const ohlPresent = response.o !== undefined;
-                fxs = response.fxs;
-                bis = response.bis;
-                xds = response.xds;
-                zsds = response.zsds;
-                bi_zss = response.bi_zss;
-                xd_zss = response.xd_zss;
-                zsd_zss = response.zsd_zss;
-                bcs = response.bcs;
-                mmds = response.mmds;
+                fxs = response.fxs || [];
+                bis = response.bis || [];
+                xds = response.xds || [];
+                zsds = response.zsds || [];
+                bi_zss = response.bi_zss || [];
+                xd_zss = response.xd_zss || [];
+                zsd_zss = response.zsd_zss || [];
+                bcs = response.bcs || [];
+                mmds = response.mmds || [];
                 for (let i = 0; i < response.t.length; ++i) {
                     const barValue = {
                         time: response.t[i] * 1000,
@@ -179,29 +163,29 @@
                     }
                     bars.push(barValue);
                 }
-                let result = {
-                    bars: bars,
-                    meta: meta,
-                    fxs: fxs,
-                    bis: bis,
-                    xds: xds,
-                    zsds: zsds,
-                    bi_zss: bi_zss,
-                    xd_zss: xd_zss,
-                    zsd_zss: zsd_zss,
-                    bcs: bcs,
-                    mmds: mmds,
-                };
-                let obj_res = this.bars_result.get(requestParams['symbol'].toString().toLowerCase());
+            }
+            const result = {
+                bars: bars,
+                meta: meta,
+                fxs: fxs,
+                bis: bis,
+                xds: xds,
+                zsds: zsds,
+                bi_zss: bi_zss,
+                xd_zss: xd_zss,
+                zsd_zss: zsd_zss,
+                bcs: bcs,
+                mmds: mmds,
+            };
+            if (response.s !== 'no_data') {
+                const symbolKey = requestParams['symbol'].toString().toLowerCase();
+                const resKey = requestParams['resolution'].toString().toLowerCase();
+                let obj_res = this.bars_result.get(symbolKey);
                 if (obj_res == undefined) {
-                    let obj_res = new Map();
-                    obj_res.set(requestParams['resolution'].toString().toLowerCase(), result);
-                    this.bars_result.set(requestParams['symbol'].toString().toLowerCase(), obj_res);
+                    obj_res = new Map();
+                    this.bars_result.set(symbolKey, obj_res);
                 }
-                else {
-                    obj_res.set(requestParams['resolution'].toString().toLowerCase(), result);
-                    this.bars_result.set(requestParams['symbol'].toString().toLowerCase(), obj_res);
-                }
+                obj_res.set(resKey, result);
             }
             return result;
         }

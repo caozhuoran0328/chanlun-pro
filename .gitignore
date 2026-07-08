@@ -171,3 +171,16 @@ src/cl_vnpy/.vntrader
 src/cl_myquant/gmcache
 # 无用的排除
 /my_debug
+.agents
+.claude
+skills
+CLAUDE.md
+.margay
+.pytest_cache
+.venv
+.vscode
+.geminiignore
+.gitignore
+margay-cli-temp-1780907271745
+股票基本面分析
+

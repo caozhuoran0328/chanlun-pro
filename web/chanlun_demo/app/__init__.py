@@ -395,6 +395,9 @@ def create_app(test_config=None):
             "zsd_zss": cl_chart_data["zsd_zss"],
             "bcs": cl_chart_data["bcs"],
             "mmds": cl_chart_data["mmds"],
+
+            "duokong": cl_chart_data.get("duokong", {}),
+            "duokong_xd": cl_chart_data.get("duokong_xd", {}),
         }
         return info
 
@@ -613,6 +616,9 @@ def create_app(test_config=None):
             "chart_show_xd_bc",
             "chart_show_zsd_bc",
             "chart_show_qsd_bc",
+            "chart_show_duokong_suidao",
+            "chart_show_duokong_suidao_xd",
+
         ]
         cl_config = {}
         for _k in keys:
