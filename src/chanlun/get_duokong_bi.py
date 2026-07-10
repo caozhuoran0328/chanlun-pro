@@ -57,6 +57,11 @@ def get_bi_kline(klines, bi: BI):
     condition = (klines['date'] >= start_dt) & (klines['date'] <= end_dt)
     return klines[condition].copy()
 
+def get_last_kline(klines, start_date):
+    klines['date'] = pd.to_datetime(klines['date'])
+    condition = klines['date'] >= start_date
+    return klines[condition].copy()
+
 
 class Bi_DuoKong_Process:
     """
@@ -462,12 +467,17 @@ class Bi_DuoKong_Process:
                 pass
 
         # 处理最后未闭合的线段：将最后追踪到的高低点延伸到最后一根K线
-        if len(klines) > 0:
-            last_date = klines['date'].iloc[-1]
-            if self.start_high_date is not None and self.start_high_date < last_date:
-                self._append_dksd_line(self.dksd_high_line, self.start_high, self.start_high_date, last_date)
-            if self.start_low_date is not None and self.start_low_date < last_date:
-                self._append_dksd_line(self.dksd_low_line, self.start_low, self.start_low_date, last_date)
+        start_date = bi.end.k.date
+        last_klines = get_last_kline(klines, start_date)
+        for index, row in last_klines.iterrows():
+            if row['h'] > self.start_high:
+                self._append_dksd_line(self.dksd_high_lien, self.start_high, self.start_high_date, row['date'])
+                self.start_high = row['h']
+                self.start_high_date = row['date']
+            if row['l'] < self.start_low:
+                self._append_dksd_line(self.dksd_low_line, self.start_low, self.start_low_date, row['date'])
+                self.start_low = row['l']
+                self.start_low_date = row['date']
 
         return self.dksd_high_line, self.dksd_low_line
 

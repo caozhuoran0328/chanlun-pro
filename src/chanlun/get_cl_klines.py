@@ -170,6 +170,9 @@ def verify_bh(cl_klines, debug=False):
         print(f'[DEBUG] verify_bh: 全部通过 ({len(cl_klines)} 根K线)')
     return all_ok
 
+def get_cl_bar(bar: Kline):
+    pass
+
 
 if __name__ == "__main__":
     src_klines = get_src_klines("SH.601698", "d", "2024-09-08")

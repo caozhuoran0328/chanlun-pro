@@ -148,46 +148,16 @@ class CL(ICL):
         logger.info(f"{diag_ctx} after XD_Process: xds={len(self.xds)}")
         print(f"[CL-DIAG] {self.code} {self.frequency} xds={len(self.xds)}")
 
-        # 计算 MACD 指标
-        self._calc_idx()
-        logger.info(f"{diag_ctx} after _calc_idx: macd_dif={len(self.idx.get('macd', {}).get('dif', []))}")
-
-        # 重置中枢和走势段
-        self.zsds = []
-        self.qsds = []
-        # 计算 BI 级别中枢
-        self.bi_zss = create_dn_zs_fn("bi", self.bis, config=self.config)
-        logger.info(f"{diag_ctx} after bi_zss: bi_zss={len(self.bi_zss)}")
-        print(f"[CL-DIAG] {self.code} {self.frequency} bi_zss={len(self.bi_zss)}")
-        # 计算 XD 级别中枢
-        self.xd_zss = create_dn_zs_fn("xd", self.xds, config=self.config)
-        logger.info(f"{diag_ctx} after xd_zss: xd_zss={len(self.xd_zss)}")
-        print(f"[CL-DIAG] {self.code} {self.frequency} xd_zss={len(self.xd_zss)}")
-        self.zsd_zss = []
-        self.qsd_zss = []
-        # 计算 BI 级别背驰和买卖点
-        compute_all_bcs(self, self.bis, self.bi_zss, "bi", self.config)
-        compute_all_mmds(self, self.bis, self.bi_zss, "bi", config=self.config)
-        logger.info(f"{diag_ctx} after bi bc/mmd: bis={len(self.bis)}")
-        print(f"[CL-DIAG] {self.code} {self.frequency} bi_mmd={len(self.bis)}")
-        # 计算 XD 级别背驰和买卖点
-        compute_all_bcs(self, self.xds, self.xd_zss, "xd", self.config)
-        compute_all_mmds(self, self.xds, self.xd_zss, "xd", config=self.config)
-        logger.info(f"{diag_ctx} after xd bc/mmd: xds={len(self.xds)}")
-        print(f"[CL-DIAG] {self.code} {self.frequency} xd_mmd={len(self.xds)}")
-
         # 计算多空隧道
         bi_dk_proc = Bi_DuoKong_Process()
         self.dksd_bi_high, self.dksd_bi_low = bi_dk_proc._compute_dk_sequences(self.bis, self.src_klines)
 
         xd_dk_proc = XianDuan_DuoKong_Process()
         self.dksd_xd_high, self.dksd_xd_low = xd_dk_proc._compute_dk_sequences(self.xds, self.src_klines)
-        logger.info(
-            f"{diag_ctx} process_klines DONE: "
-            f"klines={len(self.src_klines)} fxs={len(self.fxs)} "
-            f"bis={len(self.bis)} xds={len(self.xds)} "
-            f"bi_zss={len(self.bi_zss)} xd_zss={len(self.xd_zss)}"
-        )
+
+        compute_all_mmds(self.src_klines, self.dksd_bi_high, self.dksd_bi_low, self.dksd_xd_high, self.dksd_xd_low)
+
+
         return self
 
     def _calc_idx(self):
