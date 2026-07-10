@@ -9,9 +9,10 @@ from chanlun.get_bi import BI_Process
 from chanlun.get_xd import XD_Process
 from chanlun.get_duokong_bi import Bi_DuoKong_Process
 from chanlun.get_duokong_xd import XianDuan_DuoKong_Process
+from datetime import datetime
 
 class Point(NamedTuple):
-    date: str
+    date: datetime
     point_type: str
     price: float
 
@@ -20,7 +21,8 @@ class BuySellPoint:
         self.points: List[Point] = []
 
     def add_point(self, date, point_type, price):
-        self.points.append(Point(date, point_type, price))
+        dt = datetime.strptime(date, '%Y-%m-%d %H:%M:%S')
+        self.points.append(Point(dt, point_type, price))
         
     def __repr__(self):
         return f"BuySellPoint(total_points={len(self.points)})"

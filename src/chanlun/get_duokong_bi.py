@@ -183,7 +183,7 @@ class Bi_DuoKong_Process:
                     self.left = self.left_after
                     self.left_after = bi
                     self.status = Bi_DuoKong_Process_Status.MIDDLE
-                    return Bi_DuoKong(DuoKong_Status.DUO, 0, None, self.start.low, self.start.start_datetime)
+                    #return Bi_DuoKong(DuoKong_Status.DUO, 0, None, self.start.low, self.start.start_datetime)
                 else:
                     self.middle = bi
                     self.status = Bi_DuoKong_Process_Status.THREE_NO_PO_ONE
@@ -193,7 +193,7 @@ class Bi_DuoKong_Process:
                     self.left = self.left_after
                     self.left_after = bi
                     self.status = Bi_DuoKong_Process_Status.MIDDLE
-                    return Bi_DuoKong(DuoKong_Status.KONG, 0, None, self.start.high, self.start.start_datetime)
+                    #return Bi_DuoKong(DuoKong_Status.KONG, 0, None, self.start.high, self.start.start_datetime)
                 else:
                     self.middle = bi
                     self.status = Bi_DuoKong_Process_Status.THREE_NO_PO_ONE
@@ -203,6 +203,7 @@ class Bi_DuoKong_Process:
                 if self.start.high < self.left_after.high:
                     # 从Middle转过来的
                     low_price = self.start.low
+                    compare_price = self.left_after.high
                     if bi.high > self.left_after.high:
                         if bi.low < self.left.low:
                             self.start = bi
@@ -212,27 +213,27 @@ class Bi_DuoKong_Process:
                             self.left = self.middle
                             self.left_after = bi
                             self.status = Bi_DuoKong_Process_Status.MIDDLE
-                        return Bi_DuoKong(DuoKong_Status.DUO, 3, self.left.high, low_price, None)
+                        return Bi_DuoKong(DuoKong_Status.DUO, 3, compare_price, low_price, None)
                     else:
                         if bi.low < self.left.low:
                             self.start = self.middle
                             self.left = bi
                             self.status = Bi_DuoKong_Process_Status.LEFT_AFTER
-                            return Bi_DuoKong(DuoKong_Status.KONG, 0, None, self.middle.high, self.middle.end_datetime)
+                            #return Bi_DuoKong(DuoKong_Status.KONG, 0, None, self.middle.high, self.middle.end_datetime)
                         else:
                             self.start = self.left_after
                             self.left = self.middle
                             self.left_after = bi
                             self.status = Bi_DuoKong_Process_Status.LEFT_AFTER_NORMAL
-                            return Bi_DuoKong(DuoKong_Status.DUO, 0, None, self.left_after.low, self.left_after.end_datetime)
+                            # return Bi_DuoKong(DuoKong_Status.DUO, 0, None, self.left_after.low, self.left_after.end_datetime)
                 else:
                     #从left_after_normal跳转过来的
                     if self.middle.low < self.left.low:
                         if bi.high > self.start.high:
-                            low_price = self.start.low
+                            high_price = self.start.high
                             self.start = bi
                             self.status = Bi_DuoKong_Process_Status.LEFT
-                            return Bi_DuoKong(DuoKong_Status.DUO, 1, self.start.high, low_price, None)
+                            return Bi_DuoKong(DuoKong_Status.DUO, 1, high_price, bi.low, None)
                         elif bi.high > self.left_after.high:
                             low_price = self.start.low
                             self.start = bi
@@ -244,7 +245,7 @@ class Bi_DuoKong_Process:
                             self.left_after = self.middle
                             self.middle = bi
                             self.status = Bi_DuoKong_Process_Status.THREE_NO_PO_ONE
-                            return Bi_DuoKong(DuoKong_Status.KONG, 0, None, self.start.high, self.start.end_datetime)
+                            #return Bi_DuoKong(DuoKong_Status.KONG, 0, None, self.start.high, self.start.end_datetime)
                     else:
                         left_after_length = self.left_after.high - self.left_after.low
                         position_1618 = bi.low + left_after_length * 1.618
@@ -254,7 +255,7 @@ class Bi_DuoKong_Process:
                             self.left = self.middle
                             self.left_after = bi
                             self.status = Bi_DuoKong_Process_Status.MIDDLE
-                            return Bi_DuoKong(DuoKong_Status.DUO, 0, None, low_price, self.start.end_datetime)
+                            #return Bi_DuoKong(DuoKong_Status.DUO, 0, None, low_price, self.start.end_datetime)
                         else:
                             high_price = self.start.high
                             self.start = self.left
@@ -262,12 +263,13 @@ class Bi_DuoKong_Process:
                             self.left_after = self.middle
                             self.middle = bi
                             self.status = Bi_DuoKong_Process_Status.THREE_NO_PO_ONE
-                            return Bi_DuoKong(DuoKong_Status.KONG, 0, None, high_price, self.start.start_datetime)
+                            #return Bi_DuoKong(DuoKong_Status.KONG, 0, None, high_price, self.start.start_datetime)
             else:
                 # 笔方向向下
                 if self.left_after.low < self.start.low:
                     # 从middle转过来
                     high_price = self.start.high
+                    compare_price = self.left_after.low
                     if bi.low < self.left_after.low:
                         if bi.high > self.left.high:
                             self.start = bi
@@ -277,27 +279,27 @@ class Bi_DuoKong_Process:
                             self.left = self.middle
                             self.left_after = bi
                             self.status = Bi_DuoKong_Process_Status.MIDDLE
-                        return Bi_DuoKong(DuoKong_Status.KONG, 3, self.left.low, high_price, None)
+                        return Bi_DuoKong(DuoKong_Status.KONG, 3, compare_price, high_price, None)
                     else:
                         if bi.high > self.left.high:
                             self.start = self.middle
                             self.left = bi
                             self.status = Bi_DuoKong_Process_Status.LEFT_AFTER
-                            return Bi_DuoKong(DuoKong_Status.DUO, 0, None, self.middle.low, self.middle.end_datetime)
+                            #return Bi_DuoKong(DuoKong_Status.DUO, 0, None, self.middle.low, self.middle.end_datetime)
                         else:
                             self.start = self.left_after
                             self.left = self.middle
                             self.left_after = bi
                             self.status = Bi_DuoKong_Process_Status.LEFT_AFTER_NORMAL
-                            return Bi_DuoKong(DuoKong_Status.KONG, 0, None, self.left_after.high, self.left_after.end_datetime)
+                            #return Bi_DuoKong(DuoKong_Status.KONG, 0, None, self.left_after.high, self.left_after.end_datetime)
                 else:
                     # 从left_after_normal跳转过来
                     if self.middle.high > self.left.high:
                         if bi.low < self.start.low:
-                            high_price = self.start.high
+                            low_price = self.start.low
                             self.start = bi
                             self.status = Bi_DuoKong_Process_Status.LEFT
-                            return Bi_DuoKong(DuoKong_Status.KONG, 1, self.start.low, high_price, None)
+                            return Bi_DuoKong(DuoKong_Status.KONG, 1, low_price, bi.high, None)
                         elif bi.low < self.left_after.low:
                             high_price = self.start.high
                             self.start = bi
@@ -309,7 +311,7 @@ class Bi_DuoKong_Process:
                             self.left_after = self.middle
                             self.middle = bi
                             self.status = Bi_DuoKong_Process_Status.THREE_NO_PO_ONE
-                            return Bi_DuoKong(DuoKong_Status.DUO, 0, None, self.start.low, self.start.end_datetime)
+                            #return Bi_DuoKong(DuoKong_Status.DUO, 0, None, self.start.low, self.start.end_datetime)
                     else:
                         left_after_length = self.left_after.high - self.left_after.low
                         position_1618 = bi.high - left_after_length * 1.618
@@ -319,7 +321,7 @@ class Bi_DuoKong_Process:
                             self.left = self.middle
                             self.left_after = bi
                             self.status = Bi_DuoKong_Process_Status.MIDDLE
-                            return Bi_DuoKong(DuoKong_Status.KONG, 0, None, high_price, self.start.end_datetime)
+                            #return Bi_DuoKong(DuoKong_Status.KONG, 0, None, high_price, self.start.end_datetime)
                         else:
                             low_price = self.start.low
                             self.start = self.left
@@ -327,7 +329,7 @@ class Bi_DuoKong_Process:
                             self.left_after = self.middle
                             self.middle = bi
                             self.status = Bi_DuoKong_Process_Status.THREE_NO_PO_ONE
-                            return Bi_DuoKong(DuoKong_Status.DUO, 0, None, low_price, self.start.end_datetime)
+                            #return Bi_DuoKong(DuoKong_Status.DUO, 0, None, low_price, self.start.end_datetime)
 
         elif self.status == Bi_DuoKong_Process_Status.TURN_V:
             if bi.type in [BiType.UP, BiType.VERIFY_UP]:
@@ -471,7 +473,7 @@ class Bi_DuoKong_Process:
         last_klines = get_last_kline(klines, start_date)
         for index, row in last_klines.iterrows():
             if row['h'] > self.start_high:
-                self._append_dksd_line(self.dksd_high_lien, self.start_high, self.start_high_date, row['date'])
+                self._append_dksd_line(self.dksd_high_line, self.start_high, self.start_high_date, row['date'])
                 self.start_high = row['h']
                 self.start_high_date = row['date']
             if row['l'] < self.start_low:
@@ -483,7 +485,7 @@ class Bi_DuoKong_Process:
 
 
 if __name__ == '__main__':
-    src_klines = get_src_klines('SZ.000543', '30m', None)
+    src_klines = get_src_klines('SZ.300491', 'd', None)
     cl_klines = get_cl_lines(src_klines)
     fx_proc = FX_PROCESS()
     fxlist = fx_proc.find_fenxing(cl_klines)

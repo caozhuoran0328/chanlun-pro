@@ -17,6 +17,7 @@ from chanlun.get_bc import beichi_pz as beichi_pz_fn, beichi_qs as beichi_qs_fn,
 from chanlun.get_mmd import compute_all_mmds
 from chanlun.get_duokong_bi import Bi_DuoKong_Process
 from chanlun.get_duokong_xd import XianDuan_DuoKong_Process
+from chanlun.get_mmd import BuySellPoint
 
 class CL(ICL):
     # 序列化版本号：当 CL 类结构变更导致 pickle 不兼容时，递增此版本号
@@ -45,6 +46,7 @@ class CL(ICL):
         self.dksd_xd_low: List[float] = []
         self.dksd_bi_high: List[float] = []
         self.dksd_bi_low: List[float] = []
+        self.mmd: list = []
         self._pickle_version = CL.PICKLE_VERSION
 
     def __getstate__(self) -> dict:
@@ -92,7 +94,8 @@ class CL(ICL):
             'dksd_xd_high': [],
             'dksd_xd_low': [],
             'dksd_bi_high': [],
-            'dksd_bi_low': []
+            'dksd_bi_low': [],
+            'mmd': []
         }
         for attr, default in defaults.items():
             if attr not in self.__dict__:
@@ -155,9 +158,9 @@ class CL(ICL):
         xd_dk_proc = XianDuan_DuoKong_Process()
         self.dksd_xd_high, self.dksd_xd_low = xd_dk_proc._compute_dk_sequences(self.xds, self.src_klines)
 
-        compute_all_mmds(self.src_klines, self.dksd_bi_high, self.dksd_bi_low, self.dksd_xd_high, self.dksd_xd_low)
-
-
+        ret_mmd = compute_all_mmds(self.src_klines, self.dksd_bi_high, self.dksd_bi_low, self.dksd_xd_high, self.dksd_xd_low)
+        self.mmd = ret_mmd.points
+        
         return self
 
     def _calc_idx(self):
