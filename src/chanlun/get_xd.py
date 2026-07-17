@@ -243,16 +243,12 @@ class XD_Process:
                     if bi_low < self.middle.low:
                         self.middle = self.generate_bi(self.middle, bi)
                         if bi_low < self.left.low:
-                            if bi_low < self.start.low:
-                                ret_xd = self.set_xd_from_bi(self.start, self.start)
-                                self.start = self.left
-                                self.left = self.left_after
-                                self.left_after = self.middle
-                                self.status = XDProcessType.MIDDLE
-                                ret_xd2 = self.set_xd_from_bi(self.start, self.left_after)
-                            else:
-                                self.left = self.generate_bi(self.left, self.middle)
-                                self.status = XDProcessType.LEFT_AFTER
+                            ret_xd = self.set_xd_from_bi(self.start, self.start)
+                            self.start = self.left
+                            self.left = self.left_after
+                            self.left_after = self.middle
+                            self.status = XDProcessType.MIDDLE
+                            ret_xd2 = self.set_xd_from_bi(self.start, self.left_after)
                         else:
                             self.status = XDProcessType.LEFT_AFTER_NORMAL
                     else:
@@ -262,16 +258,12 @@ class XD_Process:
                     if bi_high > self.middle.high:
                         self.middle = self.generate_bi(self.middle, bi)
                         if bi_high > self.left.high:
-                            if bi_high > self.start.high:
-                                ret_xd = self.set_xd_from_bi(self.start, self.start)
-                                self.start = self.left
-                                self.left = self.left_after
-                                self.left_after = self.middle
-                                self.status = XDProcessType.MIDDLE
-                                ret_xd2 = self.set_xd_from_bi(self.start, self.left_after)
-                            else:
-                                self.left = self.generate_bi(self.left, self.middle)
-                                self.status = XDProcessType.LEFT_AFTER
+                            ret_xd = self.set_xd_from_bi(self.start, self.start)
+                            self.start = self.left
+                            self.left = self.left_after
+                            self.left_after = self.middle
+                            self.status = XDProcessType.MIDDLE
+                            ret_xd2 = self.set_xd_from_bi(self.start, self.left_after)
                         else:
                             self.status = XDProcessType.LEFT_AFTER_NORMAL
                     else:
@@ -490,21 +482,23 @@ class XD_Process:
         elif self.status == XDProcessType.RIGHT_NORMAL:
             if bi_type == BiType.UP or bi_type == BiType.VERIFY_UP:
                 if bi_high > self.right.high:
-                    self.start = self.generate_bi(self.start, self.left_after)
-                    self.left = self.middle
-                    self.left_after = self.generate_bi(self.middle_after, bi)
                     ret_xd = self.set_xd_from_bi(self.start, self.left_after)
-                    self.status = XDProcessType.MIDDLE
+                    self.start = self.middle
+                    self.left = self.middle_after
+                    self.left_after = self.right
+                    self.middle = bi
+                    self.status = XDProcessType.LEFT_AFTER_NORMAL_NORMAL
                 else:
                     self.right_after = bi
                     self.status = XDProcessType.RIGHT_NORMAL_NORMAL
             elif bi_type == BiType.DOWN or bi_type == BiType.VERIFY_DOWN:
                 if bi_low < self.right.low:
-                    self.start = self.generate_bi(self.start, self.left_after)
-                    self.left = self.middle
-                    self.left_after = self.generate_bi(self.middle_after, bi)
                     ret_xd = self.set_xd_from_bi(self.start, self.left_after)
-                    self.status = XDProcessType.MIDDLE
+                    self.start = self.middle
+                    self.left = self.middle_after
+                    self.left_after = self.right
+                    self.middle = bi
+                    self.status = XDProcessType.LEFT_AFTER_NORMAL_NORMAL
                 else:
                     self.right_after = bi
                     self.status = XDProcessType.RIGHT_NORMAL_NORMAL
@@ -534,11 +528,19 @@ class XD_Process:
                         if bi_low < self.middle.low:
                             self.right = self.generate_bi(self.right, bi)
                             ret_xd = self.set_xd_from_bi(self.start, self.left_after)
+                            ret_xd2 = self.set_xd_from_bi(self.middle, self.middle)
+                            self.start = self.middle_after
+                            self.left = self.right
+                            self.left_after = self.generate_bi(self.right_after, bi)
+                            self.status = XDProcessType.MIDDLE
+                            ret_xd3 = self.set_xd_from_bi(self.start, self.left_after)
+                            """
                             self.start = self.middle
                             self.left = self.middle_after
                             self.left_after = self.right
                             self.status = XDProcessType.MIDDLE
                             ret_xd2 = self.set_xd_from_bi(self.start, self.left_after)
+                            """
                         else:
                             self.right = self.generate_bi(self.right, bi)
                             self.status = XDProcessType.RIGHT_NORMAL
@@ -563,11 +565,12 @@ class XD_Process:
                     if bi_low < self.right.low:
                         if bi_low < self.middle.low:
                             ret_xd = self.set_xd_from_bi(self.start, self.left_after)
-                            self.start = self.middle
-                            self.left = self.middle_after
-                            self.left_after = self.generate_bi(self.right, bi)
+                            ret_xd2 = self.set_xd_from_bi(self.middle, self.middle)
+                            self.start = self.middle_after
+                            self.left = self.right
+                            self.left_after = self.generate_bi(self.right_after, bi)
                             self.status = XDProcessType.MIDDLE
-                            ret_xd2 = self.set_xd_from_bi(self.start, self.left_after)
+                            ret_xd3 = self.set_xd_from_bi(self.start, self.left_after)
                         else:
                             self.middle_after = self.generate_bi(self.middle_after, bi)
                             self.status = XDProcessType.RIGHT
@@ -631,7 +634,7 @@ class XD_Process:
 
 
 if __name__ == '__main__':
-    src_klines = get_src_klines('SZ.300491', 'd', None)
+    src_klines = get_src_klines('SZ.002430', '1m', None)
     cl_klines = get_cl_lines(src_klines)
     fx_proc = FX_PROCESS()
     fxlist = fx_proc.find_fenxing(cl_klines)

@@ -139,7 +139,7 @@ class FX_PROCESS:
     def find_gd_high_low(self, k: CLKline):
         date_str = k.date.strftime('%Y-%m-%d %H:%M:%S')
         high = k.h
-        low = k.l
+        low = k.low
         index_no = k.k_index
         if self.status == FenXingProcessStatus.NEXT_MIDDLE:
             before_last_fx, last_fx = self.get_before_last_fx()
@@ -225,6 +225,18 @@ class FX_PROCESS:
                 self.middle = k
                 self.status = FenXingProcessStatus.RIGHT
                 return FxStatus.FAILURE_BOTTOM, self.right
+            elif before_last_fx and before_last_fx.type == FxStatus.BOTTOM and low < before_last_fx.val:
+                ret_k = self.middle
+                self.left = self.right
+                self.middle = k
+                self.status = FenXingProcessStatus.RIGHT
+                return FxStatus.TOP, ret_k
+            elif before_last_fx and before_last_fx.type == FxStatus.TOP and high > before_last_fx.val:
+                ret_k = self.middle
+                self.left = self.right
+                self.middle = k
+                self.status = FenXingProcessStatus.RIGHT
+                return FxStatus.BOTTOM, ret_k
             else:
                 self.free = k
                 self.status = FenXingProcessStatus.NEXT_LEFT
@@ -301,7 +313,7 @@ class FX_PROCESS:
 
     
 if __name__ == '__main__':
-    src_klines = get_src_klines('SZ.300491', 'd', None )
+    src_klines = get_src_klines('SZ.002430', '1m', None )
     cl_klines = get_cl_lines(src_klines)
     fx_proc = FX_PROCESS()
     fx_list = fx_proc.find_fenxing(cl_klines)
